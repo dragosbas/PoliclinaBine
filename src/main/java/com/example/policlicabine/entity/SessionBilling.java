@@ -3,20 +3,21 @@ package com.example.policlicabine.entity;
 import com.example.policlicabine.entity.enums.PaymentStatus;
 import com.example.policlicabine.entity.enums.PaymentType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Table(name = "session_billing")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -29,10 +30,12 @@ public class SessionBilling {
     @JoinColumn(name = "session_id", nullable = false, unique = true)
     private AppointmentSession session;
 
-    @OneToMany(mappedBy = "sessionBilling", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "sessionBilling", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
     private List<BillingDiscount> discounts;
 
     @ManyToMany(mappedBy = "sessionBillings", fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
     private List<Invoice> invoices;
 
     @CreationTimestamp
@@ -46,21 +49,21 @@ public class SessionBilling {
         }
     }
 
-    public Double getSubtotalAmount() {
-        return session != null ? session.getSubtotalAmount() : 0.0;
+    public BigDecimal getSubtotalAmount() {
+        return session != null ? session.getSubtotalAmount() : BigDecimal.ZERO;
     }
 
-    public Double getTotalDiscountAmount() {
+    public BigDecimal getTotalDiscountAmount() {
         if (discounts == null || discounts.isEmpty()) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
         return discounts.stream()
-            .mapToDouble(discount -> discount.getAmount() != null ? discount.getAmount() : 0.0)
-            .sum();
+            .map(discount -> discount.getAmount() != null ? discount.getAmount() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Double getFinalAmount() {
-        return getSubtotalAmount() - getTotalDiscountAmount();
+    public BigDecimal getFinalAmount() {
+        return getSubtotalAmount().subtract(getTotalDiscountAmount());
     }
 
     public PaymentStatus getPaymentStatus() {
@@ -68,20 +71,20 @@ public class SessionBilling {
             return PaymentStatus.PENDING;
         }
 
-        Double totalPaid = invoices.stream()
-            .flatMap(invoice -> invoice.getPayments().stream())
-            .flatMap(payment -> payment.getInvoices().stream())
-            .filter(invoice -> invoice.getSessionBillings().contains(this))
-            .flatMap(invoice -> invoice.getPayments().stream())
+        // Simplified payment status calculation to avoid circular navigation
+        // Get total amount paid from all related invoices
+        BigDecimal totalPaid = invoices.stream()
+            .filter(invoice -> !invoice.getIsProforma())
+            .flatMap(invoice -> invoice.getPayments() != null ? invoice.getPayments().stream() : java.util.stream.Stream.empty())
             .filter(payment -> payment.getPaymentType() != PaymentType.REFUND)
-            .mapToDouble(Payment::getAmount)
-            .sum();
+            .map(Payment::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        Double finalAmount = getFinalAmount();
+        BigDecimal finalAmount = getFinalAmount();
 
-        if (totalPaid <= 0) {
+        if (totalPaid.compareTo(BigDecimal.ZERO) <= 0) {
             return PaymentStatus.PENDING;
-        } else if (totalPaid >= finalAmount) {
+        } else if (totalPaid.compareTo(finalAmount) >= 0) {
             return PaymentStatus.FULLY_PAID;
         } else {
             return PaymentStatus.PARTIALLY_PAID;
@@ -92,7 +95,7 @@ public class SessionBilling {
         return session != null ? session.getPatient() : null;
     }
 
-    public void addDiscount(User appliedBy, Double amount, String reason) {
+    public void addDiscount(User appliedBy, BigDecimal amount, String reason) {
         if (discounts == null) {
             discounts = new ArrayList<>();
         }
@@ -105,5 +108,26 @@ public class SessionBilling {
             .build();
 
         discounts.add(discount);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SessionBilling)) return false;
+        SessionBilling that = (SessionBilling) o;
+        return billingId != null && Objects.equals(billingId, that.billingId);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "SessionBilling{" +
+                "billingId=" + billingId +
+                ", finalAmount=" + getFinalAmount() +
+                '}';
     }
 }

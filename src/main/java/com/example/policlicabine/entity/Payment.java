@@ -2,21 +2,22 @@ package com.example.policlicabine.entity;
 
 import com.example.policlicabine.entity.enums.PaymentType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "payments")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -31,6 +32,7 @@ public class Payment {
         joinColumns = @JoinColumn(name = "payment_id"),
         inverseJoinColumns = @JoinColumn(name = "invoice_id")
     )
+    @BatchSize(size = 10)
     private List<Invoice> invoices;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -38,7 +40,7 @@ public class Payment {
     private User generatedBy;
 
     @Column(precision = 10, scale = 2, nullable = false)
-    private Double amount;
+    private BigDecimal amount;
 
     @Builder.Default
     @Column(length = 3)
@@ -83,5 +85,29 @@ public class Payment {
 
     public boolean canBeAppliedToProformaInvoice() {
         return invoices.stream().noneMatch(Invoice::getIsProforma);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Payment)) return false;
+        Payment payment = (Payment) o;
+        return paymentId != null && Objects.equals(paymentId, payment.paymentId);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "Payment{" +
+                "paymentId=" + paymentId +
+                ", amount=" + amount +
+                ", currency='" + currency + '\'' +
+                ", paymentDate=" + paymentDate +
+                ", paymentType=" + paymentType +
+                '}';
     }
 }

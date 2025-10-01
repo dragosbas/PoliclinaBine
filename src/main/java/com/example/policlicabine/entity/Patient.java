@@ -2,9 +2,12 @@ package com.example.policlicabine.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -33,7 +36,7 @@ public class Patient {
     @Column(length = 20)
     private String phone;
 
-    @Column(length = 100)
+    @Column(length = 100, unique = true)
     private String email;
 
     @Column(columnDefinition = "TEXT")
@@ -41,6 +44,10 @@ public class Patient {
 
     @Column(length = 500)
     private String consentFileUrl;
+
+    @OneToMany(mappedBy = "patient", fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
+    private List<AppointmentSession> appointments = new ArrayList<>();
 
     @CreationTimestamp
     @Column(updatable = false)
@@ -51,6 +58,13 @@ public class Patient {
         if (patientId == null) {
             patientId = UUID.randomUUID();
         }
+    }
+
+    /**
+     * Checks if patient has signed consent file.
+     */
+    public boolean hasConsentSigned() {
+        return consentFileUrl != null && !consentFileUrl.trim().isEmpty();
     }
 
     @Override

@@ -2,9 +2,12 @@ package com.example.policlicabine.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -29,6 +32,10 @@ public class Question {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "consultation_id", nullable = false)
     private Consultation consultation;
+
+    @OneToMany(mappedBy = "question", fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
+    private List<Answer> answers = new ArrayList<>();
 
     @CreationTimestamp
     @Column(updatable = false)

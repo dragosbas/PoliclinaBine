@@ -1,18 +1,18 @@
 package com.example.policlicabine.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Table(name = "billing_discounts")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -30,7 +30,7 @@ public class BillingDiscount {
     private User appliedBy;
 
     @Column(precision = 10, scale = 2, nullable = false)
-    private Double amount;
+    private BigDecimal amount;
 
     @Column(columnDefinition = "TEXT")
     private String reason;
@@ -44,5 +44,27 @@ public class BillingDiscount {
         if (discountId == null) {
             discountId = UUID.randomUUID();
         }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof BillingDiscount)) return false;
+        BillingDiscount that = (BillingDiscount) o;
+        return discountId != null && Objects.equals(discountId, that.discountId);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "BillingDiscount{" +
+                "discountId=" + discountId +
+                ", amount=" + amount +
+                ", reason='" + reason + '\'' +
+                '}';
     }
 }

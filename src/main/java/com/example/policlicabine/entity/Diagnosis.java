@@ -2,7 +2,10 @@ package com.example.policlicabine.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -26,6 +29,10 @@ public class Diagnosis {
 
     @Column(columnDefinition = "TEXT")
     private String icd10Description;
+
+    @ManyToMany(mappedBy = "diagnoses", fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
+    private List<AppointmentSession> sessions = new ArrayList<>();
 
     @PrePersist
     void generateId() {

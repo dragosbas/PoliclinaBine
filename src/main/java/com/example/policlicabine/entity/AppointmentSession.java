@@ -2,21 +2,22 @@ package com.example.policlicabine.entity;
 
 import com.example.policlicabine.entity.enums.SessionStatus;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "appointment_sessions")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -49,6 +50,7 @@ public class AppointmentSession {
         joinColumns = @JoinColumn(name = "session_id"),
         inverseJoinColumns = @JoinColumn(name = "consultation_id")
     )
+    @BatchSize(size = 10)
     private List<Consultation> consultations;
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -57,9 +59,11 @@ public class AppointmentSession {
         joinColumns = @JoinColumn(name = "session_id"),
         inverseJoinColumns = @JoinColumn(name = "diagnosis_id")
     )
+    @BatchSize(size = 10)
     private List<Diagnosis> diagnoses;
 
-    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "session", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
     private List<Answer> answers;
 
     @Column(columnDefinition = "TEXT")
@@ -119,13 +123,13 @@ public class AppointmentSession {
                freeTextObservations != null;
     }
 
-    public Double getSubtotalAmount() {
+    public BigDecimal getSubtotalAmount() {
         if (consultations == null || consultations.isEmpty()) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
         return consultations.stream()
-            .mapToDouble(consultation -> consultation.getPrice() != null ? consultation.getPrice() : 0.0)
-            .sum();
+            .map(consultation -> consultation.getPrice() != null ? consultation.getPrice() : BigDecimal.ZERO)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
     public List<Question> getAllQuestions() {
@@ -144,5 +148,28 @@ public class AppointmentSession {
         return answers.stream()
             .filter(answer -> consultation.equals(answer.getConsultation()))
             .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof AppointmentSession)) return false;
+        AppointmentSession that = (AppointmentSession) o;
+        return sessionId != null && Objects.equals(sessionId, that.sessionId);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "AppointmentSession{" +
+                "sessionId=" + sessionId +
+                ", scheduledDateTime=" + scheduledDateTime +
+                ", status=" + status +
+                ", isEmergency=" + isEmergency +
+                '}';
     }
 }

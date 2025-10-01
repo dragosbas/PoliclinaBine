@@ -3,6 +3,7 @@ package com.example.policlicabine.entity;
 import com.example.policlicabine.entity.enums.Specialty;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -34,7 +35,12 @@ public class Doctor {
     private List<Specialty> specialties = new ArrayList<>();
 
     @OneToMany(mappedBy = "doctor", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
     private List<WeeklyAvailability> weeklyAvailability = new ArrayList<>();
+
+    @OneToMany(mappedBy = "doctor", fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
+    private List<AppointmentSession> appointments = new ArrayList<>();
 
     @PrePersist
     void generateId() {

@@ -3,7 +3,9 @@ package com.example.policlicabine.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.DayOfWeek;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -27,14 +29,15 @@ public class WeeklyAvailability {
     @JoinColumn(name = "doctor_id", nullable = false)
     private Doctor doctor;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Integer dayOfWeek; // 1=Monday, 7=Sunday
+    private DayOfWeek dayOfWeek;
 
     @Column(nullable = false)
-    private String startTime; // Format: "HH:mm"
+    private LocalTime startTime;
 
     @Column(nullable = false)
-    private String endTime; // Format: "HH:mm"
+    private LocalTime endTime;
 
     private LocalDateTime effectiveFrom;
     private LocalDateTime effectiveTo;
@@ -64,8 +67,8 @@ public class WeeklyAvailability {
         return "WeeklyAvailability{" +
                 "id=" + id +
                 ", dayOfWeek=" + dayOfWeek +
-                ", startTime='" + startTime + '\'' +
-                ", endTime='" + endTime + '\'' +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
                 '}';
     }
 }

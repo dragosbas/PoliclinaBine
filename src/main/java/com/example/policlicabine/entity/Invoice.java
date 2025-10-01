@@ -3,20 +3,21 @@ package com.example.policlicabine.entity;
 import com.example.policlicabine.entity.enums.PaymentStatus;
 import com.example.policlicabine.entity.enums.PaymentType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
 @Table(name = "invoices")
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
@@ -44,9 +45,11 @@ public class Invoice {
         joinColumns = @JoinColumn(name = "invoice_id"),
         inverseJoinColumns = @JoinColumn(name = "billing_id")
     )
+    @BatchSize(size = 10)
     private List<SessionBilling> sessionBillings;
 
     @ManyToMany(mappedBy = "invoices", fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
     private List<Payment> payments;
 
     @CreationTimestamp
@@ -60,27 +63,27 @@ public class Invoice {
         }
     }
 
-    public Double getTotalAmount() {
+    public BigDecimal getTotalAmount() {
         if (sessionBillings == null || sessionBillings.isEmpty()) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
         return sessionBillings.stream()
-            .mapToDouble(SessionBilling::getFinalAmount)
-            .sum();
+            .map(SessionBilling::getFinalAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Double getTotalPaid() {
+    public BigDecimal getTotalPaid() {
         if (payments == null || payments.isEmpty()) {
-            return 0.0;
+            return BigDecimal.ZERO;
         }
         return payments.stream()
             .filter(payment -> payment.getPaymentType() != PaymentType.REFUND)
-            .mapToDouble(Payment::getAmount)
-            .sum();
+            .map(Payment::getAmount)
+            .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Double getOutstandingAmount() {
-        return getTotalAmount() - getTotalPaid();
+    public BigDecimal getOutstandingAmount() {
+        return getTotalAmount().subtract(getTotalPaid());
     }
 
     public PaymentStatus getPaymentStatus() {
@@ -88,12 +91,12 @@ public class Invoice {
             return PaymentStatus.PENDING;
         }
 
-        Double totalPaid = getTotalPaid();
-        Double totalAmount = getTotalAmount();
+        BigDecimal totalPaid = getTotalPaid();
+        BigDecimal totalAmount = getTotalAmount();
 
-        if (totalPaid <= 0) {
+        if (totalPaid.compareTo(BigDecimal.ZERO) <= 0) {
             return PaymentStatus.PENDING;
-        } else if (totalPaid >= totalAmount) {
+        } else if (totalPaid.compareTo(totalAmount) >= 0) {
             return PaymentStatus.FULLY_PAID;
         } else {
             return PaymentStatus.PARTIALLY_PAID;
@@ -106,9 +109,33 @@ public class Invoice {
 
     public void convertToFinalInvoice(String newInvoiceNumber) {
         if (!canConvertToFinalInvoice()) {
-            throw new IllegalStateException("Cannot convert proforma to final invoice");
+            throw new IllegalStateException("Cannot convert proforma to final invoice: " +
+                    (isProforma ? "invoice has existing payments" : "invoice is not proforma"));
         }
         this.isProforma = false;
         this.invoiceNumber = newInvoiceNumber;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Invoice)) return false;
+        Invoice invoice = (Invoice) o;
+        return invoiceId != null && Objects.equals(invoiceId, invoice.invoiceId);
+    }
+
+    @Override
+    public int hashCode() {
+        return getClass().hashCode();
+    }
+
+    @Override
+    public String toString() {
+        return "Invoice{" +
+                "invoiceId=" + invoiceId +
+                ", invoiceNumber='" + invoiceNumber + '\'' +
+                ", invoiceDate=" + invoiceDate +
+                ", isProforma=" + isProforma +
+                '}';
     }
 }

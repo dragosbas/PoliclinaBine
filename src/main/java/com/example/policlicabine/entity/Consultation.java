@@ -3,6 +3,7 @@ package com.example.policlicabine.entity;
 import com.example.policlicabine.entity.enums.Specialty;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
@@ -47,7 +48,16 @@ public class Consultation {
     private Boolean isActive = true;
 
     @OneToMany(mappedBy = "consultation", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true, fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
     private List<Question> questions = new ArrayList<>();
+
+    @ManyToMany(mappedBy = "consultations", fetch = FetchType.LAZY)
+    @BatchSize(size = 10)
+    private List<AppointmentSession> sessions = new ArrayList<>();
+
+    @OneToMany(mappedBy = "consultation", fetch = FetchType.LAZY)
+    @BatchSize(size = 20)
+    private List<Answer> answers = new ArrayList<>();
 
     @CreationTimestamp
     @Column(updatable = false)

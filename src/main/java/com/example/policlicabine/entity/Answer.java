@@ -11,7 +11,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "session_answers", indexes = {
     @Index(name = "idx_answer_session", columnList = "session_id"),
-    @Index(name = "idx_answer_question", columnList = "question_id")
+    @Index(name = "idx_answer_question", columnList = "question_id"),
+    @Index(name = "idx_answer_consultation", columnList = "consultation_id")
 })
 @Getter
 @Setter
@@ -31,6 +32,10 @@ public class Answer {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "question_id", nullable = false)
     private Question question;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "consultation_id", nullable = false)
+    private Consultation consultation;
 
     @Column(columnDefinition = "TEXT")
     private String answerText;
